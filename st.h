@@ -8,6 +8,7 @@
 #define MAX(a, b)		((a) < (b) ? (b) : (a))
 #define LEN(a)			(sizeof(a) / sizeof(a)[0])
 #define BETWEEN(x, a, b)	((a) <= (x) && (x) <= (b))
+#define OUT(x, a, b)		((a) <= (x) || (x) <= (b))
 #define DIVCEIL(n, d)		(((n) + ((d) - 1)) / (d))
 #define DEFAULT(a, b)		(a) = (a) ? (a) : (b)
 #define LIMIT(x, a, b)		(x) = (x) < (a) ? (a) : (x) > (b) ? (b) : (x)
@@ -33,7 +34,9 @@ enum glyph_attribute {
 	ATTR_WRAP       = 1 << 8,
 	ATTR_WIDE       = 1 << 9,
 	ATTR_WDUMMY     = 1 << 10,
+	ATTR_BOXDRAW    = 1 << 11,
 	ATTR_BOLD_FAINT = ATTR_BOLD | ATTR_FAINT,
+	ATTR_DIRTYUNDERLINE = 1 << 15,
 };
 
 enum selection_mode {
@@ -65,6 +68,8 @@ typedef struct {
 	ushort mode;      /* attribute flags */
 	uint32_t fg;      /* foreground  */
 	uint32_t bg;      /* background  */
+	int ustyle;	  /* underline style */
+	int ucolor[3];    /* underline color */
 } Glyph;
 
 typedef Glyph *Line;
@@ -81,14 +86,18 @@ void die(const char *, ...);
 void redraw(void);
 void draw(void);
 
+void opencopied(const Arg *);
+void newterm(const Arg *);
 void printscreen(const Arg *);
 void printsel(const Arg *);
 void sendbreak(const Arg *);
 void toggleprinter(const Arg *);
+void copyurl(const Arg *);
 
 int tattrset(int);
 void tnew(int, int);
 void tresize(int, int);
+void tmoveto(int x, int y);
 void tsetdirtattr(int);
 void ttyhangup(void);
 int ttynew(const char *, char *, const char *, char **);
@@ -111,6 +120,14 @@ void *xmalloc(size_t);
 void *xrealloc(void *, size_t);
 char *xstrdup(const char *);
 
+int isboxdraw(Rune);
+ushort boxdrawindex(const Glyph *);
+#ifdef XFT_VERSION
+/* only exposed to x.c, otherwise we'll need Xft.h for the types */
+void boxdraw_xinit(Display *, Colormap, XftDraw *, Visual *);
+void drawboxes(int, int, int, int, XftColor *, XftColor *, const XftGlyphFontSpec *, int);
+#endif
+
 /* config.h globals */
 extern char *utmp;
 extern char *scroll;
@@ -123,3 +140,5 @@ extern char *termname;
 extern unsigned int tabspaces;
 extern unsigned int defaultfg;
 extern unsigned int defaultbg;
+extern float alpha;
+extern const int boxdraw, boxdraw_bold, boxdraw_braille;
