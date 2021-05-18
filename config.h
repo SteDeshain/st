@@ -81,11 +81,11 @@ static unsigned int cursorthickness = 2;
  *    Bold affects lines thickness if boxdraw_bold is not 0. Italic is ignored.
  * 0: disable (render all U25XX glyphs normally from the font).
  */
-const int boxdraw = 0;
-const int boxdraw_bold = 0;
+const int boxdraw = 1;
+const int boxdraw_bold = 1;
 
 /* braille (U28XX):  1: render as adjacent "pixels",  0: use font */
-const int boxdraw_braille = 0;
+const int boxdraw_braille = 1;
 
 /*
  * bell volume. It must be a value between -100 and 100. Use 0 for disabling
@@ -162,7 +162,7 @@ static unsigned int defaultcs = 257;
 static unsigned int defaultrcs = 257;
 unsigned int const currentBg = 6, buffSize = 2048;
 /// Enable double / triple click yanking / selection of word / line.
-int const mouseYank = 1, mouseSelect = 0;
+int const mouseYank = 0, mouseSelect = 0;
 /// [Vim Browse] Colors for search results currently on screen.
 unsigned int const highlightBg = 160, highlightFg = 15;
 char const wDelS[] = "!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~", wDelL[] = " \t";
