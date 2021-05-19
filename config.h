@@ -149,6 +149,8 @@ static const char *colorname[] = {
 	/* special colors */
 	[256] = "#282a36", /* background */
 	[257] = "#f8f8f2", /* foreground */
+	[258] = "#000000", /* black for real */
+	[259] = "#888888", /* cross line for vim-browser */
 };
 
 
@@ -157,10 +159,10 @@ static const char *colorname[] = {
  * foreground, background, cursor
  */
 unsigned int defaultfg = 257;
-unsigned int defaultbg = 256;
+unsigned int defaultbg = 258;
 static unsigned int defaultcs = 257;
 static unsigned int defaultrcs = 257;
-unsigned int const currentBg = 6, buffSize = 2048;
+unsigned int const currentBg = 259, buffSize = 2048;
 /// Enable double / triple click yanking / selection of word / line.
 int const mouseYank = 0, mouseSelect = 0;
 /// [Vim Browse] Colors for search results currently on screen.
