@@ -1,0 +1,52 @@
+diff -Naur a/config.def.h b/config.def.h
+--- a/config.def.h	2021-05-17 16:43:00.587079179 +0800
++++ b/config.def.h	2021-05-17 16:43:15.210472580 +0800
+@@ -228,6 +228,7 @@
+ 	{ TERMMOD,              XK_Num_Lock,    numlock,        {.i =  0} },
+ 	{ MODKEY,               XK_l,           copyurl,        {.i =  0} },
+ 	{ TERMMOD,              XK_Return,      newterm,        {.i =  0} },
++	{ MODKEY,               XK_o,           opencopied,     {.v = "xdg-open"} },
+ };
+ 
+ /*
+diff -Naur a/st.h b/st.h
+--- a/st.h	2021-05-17 16:43:00.587079179 +0800
++++ b/st.h	2021-05-17 16:43:23.437172099 +0800
+@@ -85,6 +85,7 @@
+ void redraw(void);
+ void draw(void);
+ 
++void opencopied(const Arg *);
+ void newterm(const Arg *);
+ void printscreen(const Arg *);
+ void printsel(const Arg *);
+diff -Naur a/x.c b/x.c
+--- a/x.c	2021-05-17 16:43:00.587079179 +0800
++++ b/x.c	2021-05-17 16:45:38.657624460 +0800
+@@ -2234,3 +2234,26 @@
+ 
+ 	return 0;
+ }
++
++void
++opencopied(const Arg *arg)
++{
++	const size_t max_cmd = 2048;
++	const char *clip = xsel.clipboard;
++	if(!clip) {
++		fprintf(stderr, "Warning: nothing copied to clipboard\n");
++		return;
++	}
++
++	/* account for space/quote (3) and \0 (1) and & (1) */
++	char cmd[max_cmd + strlen(clip) + 5];
++	strncpy(cmd, (char *)arg->v, max_cmd);
++	cmd[max_cmd] = '\0';
++
++	strcat(cmd, " \"");
++	strcat(cmd, clip);
++	strcat(cmd, "\"");
++	strcat(cmd, "&");
++
++	system(cmd);
++}

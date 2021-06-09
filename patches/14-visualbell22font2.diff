@@ -1,0 +1,152 @@
+diff -Naur a/config.def.h b/config.def.h
+--- a/config.def.h	2021-05-18 13:18:44.409053540 +0800
++++ b/config.def.h	2021-05-18 13:17:12.071388109 +0800
+@@ -5,7 +5,15 @@
+  *
+  * font: see http://freedesktop.org/software/fontconfig/fontconfig-user.html
+  */
+-static char *font = "Liberation Mono:pixelsize=12:antialias=true:autohint=true";
++static char *font = "DejaVu Sans Mono:pixelsize=12:antialias=true:autohint=true";
++/* Spare fonts */
++static char *font2[] = {
++	"WenQuanYi Micro Hei Mono:pixelsize=12:style=Regular:antialias=true:autohint=true",
++	"Font Awesome 5 Free Regular:pixelsize=12:antialias=true:autohint=true",
++	"Font Awesome 5 Brands Regular:pixelsize=12:antialias=true:autohint=true",
++	"Font Awesome 5 Free Solid:pixelsize=12:antialias=true:autohint=true"
++};
++
+ static int borderpx = 2;
+ 
+ /*
+diff -Naur a/x.c b/x.c
+--- a/x.c	2021-05-18 13:18:47.419085178 +0800
++++ b/x.c	2021-05-18 13:17:23.014842827 +0800
+@@ -163,6 +163,8 @@
+ static int xloadcolor(int, const char *, Color *);
+ static int xloadfont(Font *, FcPattern *);
+ static void xloadfonts(const char *, double);
++static int xloadsparefont(FcPattern *, int);
++static void xloadsparefonts(void);
+ static void xunloadfont(Font *);
+ static void xunloadfonts(void);
+ static void xsetenv(void);
+@@ -315,6 +317,7 @@
+ {
+ 	xunloadfonts();
+ 	xloadfonts(usedfont, arg->f);
++	xloadsparefonts();
+ 	cresize(0, 0);
+ 	redraw();
+ 	xhints();
+@@ -1044,6 +1047,101 @@
+ 	FcPatternDestroy(pattern);
+ }
+ 
++int
++xloadsparefont(FcPattern *pattern, int flags)
++{
++	FcPattern *match;
++	FcResult result;
++	
++	match = FcFontMatch(NULL, pattern, &result);
++	if (!match) {
++		return 1;
++	}
++
++	if (!(frc[frclen].font = XftFontOpenPattern(xw.dpy, match))) {
++		FcPatternDestroy(match);
++		return 1;
++	}
++
++	frc[frclen].flags = flags;
++	/* Believe U+0000 glyph will present in each default font */
++	frc[frclen].unicodep = 0;
++	frclen++;
++
++	return 0;
++}
++
++void
++xloadsparefonts(void)
++{
++	FcPattern *pattern;
++	double sizeshift, fontval;
++	int fc;
++	char **fp;
++
++	if (frclen != 0)
++		die("can't embed spare fonts. cache isn't empty");
++
++	/* Calculate count of spare fonts */
++	fc = sizeof(font2) / sizeof(*font2);
++	if (fc == 0)
++		return;
++
++	/* Allocate memory for cache entries. */
++	if (frccap < 4 * fc) {
++		frccap += 4 * fc - frccap;
++		frc = xrealloc(frc, frccap * sizeof(Fontcache));
++	}
++
++	for (fp = font2; fp - font2 < fc; ++fp) {
++	
++		if (**fp == '-')
++			pattern = XftXlfdParse(*fp, False, False);
++		else
++			pattern = FcNameParse((FcChar8 *)*fp);
++	
++		if (!pattern)
++			die("can't open spare font %s\n", *fp);
++	   		
++		if (defaultfontsize > 0) {
++			sizeshift = usedfontsize - defaultfontsize;
++			if (sizeshift != 0 &&
++					FcPatternGetDouble(pattern, FC_PIXEL_SIZE, 0, &fontval) ==
++					FcResultMatch) {	
++				fontval += sizeshift;
++				FcPatternDel(pattern, FC_PIXEL_SIZE);
++				FcPatternDel(pattern, FC_SIZE);
++				FcPatternAddDouble(pattern, FC_PIXEL_SIZE, fontval);
++			}
++		}
++	
++		FcPatternAddBool(pattern, FC_SCALABLE, 1);
++	
++		FcConfigSubstitute(NULL, pattern, FcMatchPattern);
++		XftDefaultSubstitute(xw.dpy, xw.scr, pattern);
++	
++		if (xloadsparefont(pattern, FRC_NORMAL))
++			die("can't open spare font %s\n", *fp);
++	
++		FcPatternDel(pattern, FC_SLANT);
++		FcPatternAddInteger(pattern, FC_SLANT, FC_SLANT_ITALIC);
++		if (xloadsparefont(pattern, FRC_ITALIC))
++			die("can't open spare font %s\n", *fp);
++			
++		FcPatternDel(pattern, FC_WEIGHT);
++		FcPatternAddInteger(pattern, FC_WEIGHT, FC_WEIGHT_BOLD);
++		if (xloadsparefont(pattern, FRC_ITALICBOLD))
++			die("can't open spare font %s\n", *fp);
++	
++		FcPatternDel(pattern, FC_SLANT);
++		FcPatternAddInteger(pattern, FC_SLANT, FC_SLANT_ROMAN);
++		if (xloadsparefont(pattern, FRC_BOLD))
++			die("can't open spare font %s\n", *fp);
++	
++		FcPatternDestroy(pattern);
++	}
++}
++
+ void
+ xunloadfont(Font *f)
+ {
+@@ -1153,6 +1251,9 @@
+ 	usedfont = (opt_font == NULL)? font : opt_font;
+ 	xloadfonts(usedfont, 0);
+ 
++	/* spare fonts */
++	xloadsparefonts();
++
+ 	/* colors */
+ 	xw.cmap = XCreateColormap(xw.dpy, parent, xw.vis, None);
+ 	xloadcols();

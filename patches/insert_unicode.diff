@@ -1,0 +1,84 @@
+diff -Naur a/config.def.h b/config.def.h
+--- a/config.def.h	2021-05-16 12:23:23.000000000 +0800
++++ b/config.def.h	2021-05-16 12:44:52.757828571 +0800
+@@ -199,6 +199,7 @@
+ 	{ TERMMOD,              XK_Y,           selpaste,       {.i =  0} },
+ 	{ ShiftMask,            XK_Insert,      selpaste,       {.i =  0} },
+ 	{ TERMMOD,              XK_Num_Lock,    numlock,        {.i =  0} },
++	{ TERMMOD,				XK_I,			iso14755,		{.i =  0} },
+ };
+ 
+ /*
+diff -Naur a/st.1 b/st.1
+--- a/st.1	2021-05-16 12:23:23.000000000 +0800
++++ b/st.1	2021-05-16 12:44:52.757828571 +0800
+@@ -159,6 +159,10 @@
+ .TP
+ .B Ctrl-Shift-v
+ Paste from the clipboard selection.
++.TP
++.B Ctrl-Shift-i
++Launch dmenu to enter a unicode codepoint and send the corresponding glyph
++to st.
+ .SH CUSTOMIZATION
+ .B st
+ can be customized by creating a custom config.h and (re)compiling the source
+diff -Naur a/st.c b/st.c
+--- a/st.c	2021-05-16 12:23:23.000000000 +0800
++++ b/st.c	2021-05-16 12:44:52.754495192 +0800
+@@ -38,11 +38,15 @@
+ 
+ /* macros */
+ #define IS_SET(flag)		((term.mode & (flag)) != 0)
++#define NUMMAXLEN(x)		((int)(sizeof(x) * 2.56 + 0.5) + 1)
+ #define ISCONTROLC0(c)		(BETWEEN(c, 0, 0x1f) || (c) == 0x7f)
+ #define ISCONTROLC1(c)		(BETWEEN(c, 0x80, 0x9f))
+ #define ISCONTROL(c)		(ISCONTROLC0(c) || ISCONTROLC1(c))
+ #define ISDELIM(u)		(u && wcschr(worddelimiters, u))
+ 
++/* constants */
++#define ISO14755CMD			"dmenu -w \"$WINDOWID\" -p codepoint: </dev/null"
++
+ enum term_mode {
+ 	MODE_WRAP        = 1 << 0,
+ 	MODE_INSERT      = 1 << 1,
+@@ -1990,6 +1994,28 @@
+ }
+ 
+ void
++iso14755(const Arg *arg)
++{
++	FILE *p;
++	char *us, *e, codepoint[9], uc[UTF_SIZ];
++	unsigned long utf32;
++
++	if (!(p = popen(ISO14755CMD, "r")))
++		return;
++	
++	us = fgets(codepoint, sizeof(codepoint), p);
++	pclose(p);
++	
++	if (!us || *us == '\0' || *us == '-' || strlen(us) > 7)
++		return;
++	if ((utf32 = strtoul(us, &e, 16)) == ULONG_MAX ||
++		(*e != '\n' && *e != '\0'))
++		return;
++
++	ttywrite(uc, utf8encode(utf32, uc), 1);
++}
++
++void
+ toggleprinter(const Arg *arg)
+ {
+ 	term.mode ^= MODE_PRINT;
+diff -Naur a/st.h b/st.h
+--- a/st.h	2021-05-16 12:23:23.000000000 +0800
++++ b/st.h	2021-05-16 12:44:52.751161815 +0800
+@@ -81,6 +81,7 @@
+ void redraw(void);
+ void draw(void);
+ 
++void iso14755(const Arg *);
+ void printscreen(const Arg *);
+ void printsel(const Arg *);
+ void sendbreak(const Arg *);
